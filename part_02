@@ -1,0 +1,100 @@
+  </template>
+
+  <success_criteria>
+    <!-- 成功标准 -->
+  </success_criteria>
+
+  <unlocks>
+    Completing this artifact enables: tasks, specs
+  </unlocks>
+</artifact>
+```
+
+### 2.3 工件生成的实现方式
+
+**模板 vs AI 的分工**：
+
+| 角色 | 职责 | 示例 |
+|------|------|------|
+| **模板** | 定义结构 | 定义章节、格式、占位符 |
+| **AI** | 填充内容 | 根据模板生成具体内容 |
+
+**为什么需要模板？**
+- 保证一致性：所有工件都有相同的结构
+- 降低 AI 生成难度：AI 只需要填充，不需要从头构建
+- 易于维护：修改模板即可更新所有工件
+
+**AI 的作用**：
+1. 理解 context 和 rules
+2. 根据用户的 prompt 生成内容
+3. 填充模板中的占位符
+4. 确保内容符合规范（SHALL/MUST、场景等）
+
+**生成流程**：
+1. 用户运行 `/opsx:ff proposal` 或 `/opsx:continue`
+2. 系统生成指令（包括模板）
+3. AI 读取依赖文件（context）
+4. AI 根据模板生成内容
+5. 写入到对应路径
+
+---
+
+## Part 3: 任务执行机制
+
+### 3.1 任务依赖关系
+
+**任务组织**（tasks.md）：
+```markdown
+## 1. Infrastructure
+- [ ] 1.1 Set up database
+- [ ] 1.2 Configure Redis
+
+## 2. Components
+- [ ] 2.1 Implement user service
+- [ ] 2.2 Implement auth middleware
+
+## 3. Features
+- [ ] 3.1 Add user registration
+- [ ] 3.2 Add user login
+
+## 4. Testing
+- [ ] 4.1 Write unit tests
+- [ ] 4.2 Write integration tests
+```
+
+**依赖关系**：
+- Infrastructure → Components → Features → Testing
+- 基础任务必须先完成，后续任务依赖前面的完成
+- 可以标记并行任务（如果需要）
+
+### 3.2 任务进度追踪
+
+**进度追踪**（`src/utils/task-progress.ts`）：
+
+```typescript
+// 解析复选框
+const TASK_PATTERN = /^[-*]\s+\[[\sx]\]/i;
+const COMPLETED_TASK_PATTERN = /^[-*]\s+\[x\]/i;
+
+export function countTasksFromContent(content: string): TaskProgress {
+  const lines = content.split('\n');
+  let total = 0;
+  let completed = 0;
+  for (const line of lines) {
+    if (line.match(TASK_PATTERN)) {
+      total++;
+      if (line.match(COMPLETED_TASK_PATTERN)) {
+        completed++;
+      }
+    }
+  }
+  return { total, completed };
+}
+
+// 格式化状态
+export function formatTaskStatus(progress: TaskProgress): string {
+  if (progress.total === 0) return 'No tasks';
+  if (progress.completed === progress.total) return '✓ Complete';
+  return `${progress.completed}/${progress.total} tasks`;
+}
+```

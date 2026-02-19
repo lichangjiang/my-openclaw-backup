@@ -1,0 +1,34 @@
+
+### 下一步建议
+
+1. **实际应用**：在实际项目中使用 OpenSpec
+2. **自定义模板**：根据项目需求修改或扩展模板
+3. **参与社区**：分享经验，讨论改进
+4. **深入源码**：继续阅读更多源码，理解更多细节
+
+---
+
+## 源码文件清单
+
+| 文件路径 | 作用 |
+|---------|------|
+| `src/core/schemas/change.schema.ts` | Delta Spec 数据结构定义 |
+| `src/core/parsers/change-parser.ts` | Delta Spec 解析器 |
+| `src/core/validation/validator.ts` | Delta Spec 验证器 |
+| `src/core/specs-apply.ts` | Delta Specs 合并逻辑 |
+| `schemas/spec-driven/templates/` | 工件模板目录 |
+| `src/commands/workflow/instructions.ts` | AI 指令生成 |
+| `src/utils/task-progress.ts` | 任务进度追踪 |
+| `src/core/archive.ts` | 归档命令实现 |
+
+---
+
+**学习完成！** 🎉
+
+现在你已经深入理解了 OpenSpec 的底层实现原理，可以：
+- 解释 Delta Spec 的解析、验证和合并机制
+- 理解工件生成的模板化和 AI 填充模式
+- 掌握任务执行和进度追踪的实现
+- 理解归档机制和一致性保证
+
+下一步：在实际项目中应用 OpenSpec，体验规范驱动开发的价值！

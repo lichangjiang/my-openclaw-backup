@@ -1,0 +1,100 @@
+
+**应用指令**（`src/commands/workflow/instructions.ts`）：
+
+生成 apply 指令时会检查任务进度：
+```typescript
+const progress = await getTaskProgressForChange(changesDir, changeName);
+const incompleteTasks = progress.total - progress.completed;
+
+if (incompleteTasks > 0) {
+  console.log(`Warning: ${incompleteTasks} incomplete task(s) found.`);
+}
+```
+
+### 3.3 任务执行的顺序
+
+**推荐顺序**：
+1. **Infrastructure**：数据库、缓存、配置等基础设置
+2. **Components**：核心组件和服务
+3. **Features**：具体功能实现
+4. **Testing**：测试和验证
+
+**并行任务**：
+- 如果某些任务之间没有依赖，可以并行执行
+- 使用不同的章节或子章节来组织
+- 例如：`1.1` 和 `1.2` 可以并行，但 `2.x` 必须在 `1.x` 之后
+
+---
+
+## Part 4: 归档机制
+
+### 4.1 Delta Specs 合并
+
+**合并步骤**（`src/core/specs-apply.ts`）：
+
+1. **查找 Delta Specs**：扫描 `changes/<name>/specs/` 目录
+2. **准备更新**：
+   - 读取 Delta Spec 内容
+   - 验证重复和冲突
+   - 读取主规范（如果存在）
+3. **构建更新后的规范**：
+   - 应用 RENAMED、REMOVED、MODIFIED、ADDED 操作
+   - 重建规范文件
+4. **验证重建后的规范**：
+   - 确保格式正确
+   - 确保没有重复或冲突
+5. **写入文件**：更新 `openspec/specs/<name>/spec.md`
+
+```typescript
+export async function applySpecs(
+  projectRoot: string,
+  changeName: string,
+  options: { dryRun?: boolean; skipValidation?: boolean; silent?: boolean }
+): Promise<SpecsApplyOutput> {
+  // 1. 查找要更新的 specs
+  const specUpdates = await findSpecUpdates(changeDir, mainSpecsDir);
+
+  // 2. 准备所有更新（验证阶段，不写入）
+  const prepared = [];
+  for (const update of specUpdates) {
+    const built = await buildUpdatedSpec(update, changeName);
+    prepared.push({ update, rebuilt: built.rebuilt, counts: built.counts });
+  }
+
+  // 3. 验证重建的 specs
+  if (!options.skipValidation) {
+    const validator = new Validator();
+    for (const p of prepared) {
+      const report = await validator.validateSpecContent(specName, p.rebuilt);
+      if (!report.valid) {
+        throw new Error(`Validation errors in rebuilt spec for ${specName}`);
+      }
+    }
+  }
+
+  // 4. 写入文件
+  for (const p of prepared) {
+    if (!options.dryRun) {
+      await fs.mkdir(targetDir, { recursive: true });
+      await fs.writeFile(update.target, p.rebuilt);
+    }
+  }
+}
+```
+
+### 4.2 主规范更新
+
+**更新流程**：
+1. 读取主规范文件（`openspec/specs/<name>/spec.md`）
+2. 提取 Requirements 章节
+3. 应用 Delta 操作（按顺序：RENAMED → REMOVED → MODIFIED → ADDED）
+4. 重建整个文件
+5. 验证重建后的文件
+6. 写回主规范
+
+**保持一致性**：
+- 保留原有的 Purpose 和其他章节
+- 只更新 Requirements 章节
+- 保持格式一致（避免空行过多）
+- 保留原有顺序（新增的追加到最后）
+

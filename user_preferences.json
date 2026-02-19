@@ -1,0 +1,47 @@
+{
+  "profile": {
+    "createdAt": "2026-02-16T00:00:00Z",
+    "lastUpdated": "2026-02-16T06:34:00Z"
+  },
+  "preferences": {
+    "categories": {
+      "programming": {
+        "weight": 0.5,
+        "clicks": 0,
+        "readCount": 0,
+        "avgReadTime": 0
+      },
+      "ai": {
+        "weight": 0.5,
+        "clicks": 0,
+        "readCount": 0,
+        "avgReadTime": 0
+      },
+      "product": {
+        "weight": 0.2,
+        "clicks": 0,
+        "readCount": 0,
+        "avgReadTime": 0
+      }
+    },
+    "topics": {
+      "react": 0,
+      "python": 0,
+      "rust": 0,
+      "go": 0,
+      "ai-architecture": 0,
+      "frontend": 0,
+      "backend": 0,
+      "product-design": 0,
+      "devops": 0
+    },
+    "sources": {
+      "bestblogs": 0,
+      "hackernews": 0,
+      "reddit": 0,
+      "openai": 0
+    }
+  },
+  "clickHistory": [],
+  "readingSession": []
+}

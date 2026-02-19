@@ -1,0 +1,100 @@
+6. 写入到 `openspec/changes/<name>/proposal.md`
+
+---
+
+### Q3: 归档后的主规范如何保持一致性和准确性？
+
+**答案**：通过**多层次的验证和重建机制**来确保。
+
+**一致性保证机制**：
+
+### 1. 应用前的验证
+```typescript
+// 验证 Delta Specs
+const deltaReport = await validator.validateChangeDeltaSpecs(changeDir);
+if (!deltaReport.valid) {
+  console.log(chalk.red('\nValidation errors in change delta specs:'));
+  for (const issue of deltaReport.issues) {
+    console.log(chalk.red(`  ✗ ${issue.message}`));
+  }
+  return; // 阻止归档
+}
+```
+
+### 2. 重建后的验证
+```typescript
+// 准备所有更新（验证阶段，不写入）
+for (const update of specUpdates) {
+  const built = await buildUpdatedSpec(update, changeName);
+  prepared.push({ update, rebuilt: built.rebuilt, counts: built.counts });
+}
+
+// 验证重建的 specs
+const validator = new Validator();
+for (const p of prepared) {
+  const report = await validator.validateSpecContent(specName, p.rebuilt);
+  if (!report.valid) {
+    console.log(chalk.red(`\nValidation errors in rebuilt spec for ${specName}:`));
+    for (const issue of report.issues) {
+      console.log(chalk.red(`  ✗ ${issue.message}`));
+    }
+    return; // 阻止写入
+  }
+}
+```
+
+### 3. 合并顺序的正确性
+```typescript
+// RENAMED → REMOVED → MODIFIED → ADDED
+// 1. 先重命名（避免删除错误的内容）
+// 2. 再删除（删除旧的需求）
+// 3. 再修改（替换现有需求）
+// 4. 最后追加（新增的需求）
+```
+
+### 4. 格式保持
+```typescript
+// 重建规范时保留原有顺序
+const keptOrder: RequirementBlock[] = [];
+const seen = new Set<string>();
+for (const block of parts.bodyBlocks) {
+  const key = normalizeRequirementName(block.name);
+  const replacement = nameToBlock.get(key);
+  if (replacement) {
+    keptOrder.push(replacement);
+    seen.add(key);
+  }
+}
+
+// 新增的追加到最后
+for (const [key, block] of nameToBlock.entries()) {
+  if (!seen.has(key)) {
+    keptOrder.push(block);
+  }
+}
+```
+
+### 5. 跨平台兼容性
+```typescript
+// Windows 上使用 copy + remove，避免 EPERM 错误
+async function moveDirectory(src: string, dest: string): Promise<void> {
+  try {
+    await fs.rename(src, dest);
+  } catch (err: any) {
+    if (err.code === 'EPERM' || err.code === 'EXDEV') {
+      await copyDirRecursive(src, dest);
+      await fs.rm(src, { recursive: true, force: true });
+    } else {
+      throw err;
+    }
+  }
+}
+```
+
+### 6. 错误处理和回滚
+```typescript
+// 准备阶段失败 → 不写入任何文件
+try {
+  for (const update of specUpdates) {
+    const built = await buildUpdatedSpec(update, changeName);
+    prepared.push({ update, rebuilt: built.rebuilt, counts: built.counts });

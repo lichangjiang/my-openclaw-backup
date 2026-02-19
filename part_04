@@ -1,0 +1,100 @@
+### 4.3 归档组织
+
+**归档结构**（`src/core/archive.ts`）：
+
+```
+openspec/changes/archive/
+  2026-02-14-add-user-auth/
+    proposal.md
+    design.md
+    tasks.md
+    specs/
+      user-auth/
+        spec.md
+  2026-02-16-fix-bug-123/
+    proposal.md
+    design.md
+    tasks.md
+    specs/
+      core/
+        spec.md
+```
+
+**归档流程**：
+1. 验证 Delta Specs（如果存在）
+2. 显示任务进度
+3. 应用 Delta Specs 到主规范
+4. 创建带日期的归档目录：`YYYY-MM-DD-<change-name>/`
+5. 移动变更文件夹到 `archive/`
+6. 保留完整的变更历史
+
+**跨平台兼容性**：
+- 使用 `fs.rename()` 在 Unix 系统上
+- 在 Windows 上，如果 `fs.rename()` 失败（EPERM/EXDEV），则使用 copy + remove
+- 确保 Windows 用户也能正常归档
+
+---
+
+## 思考问题解答
+
+### Q1: 如果 Delta Spec 中同时有 MODIFIED 和 REMOVED 同一个需求，会发生什么？
+
+**答案**：会发生验证错误，归档会被阻止。
+
+**原因**（`src/core/validation/validator.ts`）：
+```typescript
+// 跨章节冲突检查
+for (const n of modifiedNames) {
+  if (removedNames.has(n)) {
+    issues.push({
+      level: 'ERROR',
+      path: entryPath,
+      message: `Requirement present in both MODIFIED and REMOVED: "${n}"`
+    });
+  }
+}
+```
+
+**冲突检查**：
+- MODIFIED vs REMOVED：❌ 冲突
+- MODIFIED vs ADDED：❌ 冲突
+- ADDED vs REMOVED：❌ 冲突
+- RENAMED vs MODIFIED/ADDED：⚠️ 需要注意（MODIFIED 必须引用新名称）
+
+**如何处理**：
+- 用户必须手动修正 Delta Spec
+- 选择正确的操作类型（要么 MODIFIED，要么 REMOVED，不能同时）
+- 或者删除重复的需求
+
+---
+
+### Q2: 工件生成是模板化的还是完全 AI 生成的？
+
+**答案**：是**模板化 + AI 填充**的混合模式。
+
+**模板的作用**：
+1. **定义结构**：确保所有工件都有统一的格式
+2. **降低难度**：AI 不需要从头构建文档，只需要填充内容
+3. **易于维护**：修改模板即可更新所有工件
+4. **保证一致性**：避免 AI 生成杂乱无章的格式
+
+**AI 的作用**：
+1. **理解 context**：读取依赖文件，理解项目背景
+2. **遵循 rules**：遵守约束条件（SHALL/MUST、场景等）
+3. **填充内容**：根据模板生成具体内容
+4. **确保质量**：生成符合规范的文档（需求文本、场景描述等）
+
+**为什么选择混合模式？**
+
+| 方式 | 优点 | 缺点 |
+|------|------|------|
+| **完全模板化** | 结构一致，简单易用 | 缺乏灵活性，内容质量依赖人工 |
+| **完全 AI 生成** | 灵活，内容质量高 | 格式不一致，不可预测 |
+| **模板 + AI** | ✅ 结构一致<br>✅ 内容质量高<br>✅ 易于维护 | 需要维护模板 |
+
+**实际流程**：
+1. 用户运行 `/opsx:ff proposal`
+2. 系统加载模板（`schemas/spec-driven/templates/proposal.md`）
+3. 系统生成指令（包含 context、rules、template）
+4. AI 读取依赖文件（如果有）
+5. AI 根据模板生成内容

@@ -1,0 +1,100 @@
+```typescript
+// 应用顺序
+// RENAMED
+for (const r of plan.renamed) {
+  const block = nameToBlock.get(from)!;
+  const newHeader = `### Requirement: ${to}`;
+  // 更新 block 的 header
+  nameToBlock.delete(from);
+  nameToBlock.set(to, renamedBlock);
+}
+
+// REMOVED
+for (const name of plan.removed) {
+  nameToBlock.delete(key);
+}
+
+// MODIFIED
+for (const mod of plan.modified) {
+  nameToBlock.set(key, mod);
+}
+
+// ADDED
+for (const add of plan.added) {
+  nameToBlock.set(key, add);
+}
+```
+
+**重建规范文件**：
+- 保留原有顺序
+- 新增的需求追加到最后
+- 保持格式一致性（避免空行过多）
+
+---
+
+## Part 2: 工件生成机制
+
+### 2.1 工件模板系统
+
+**模板位置**：`schemas/spec-driven/templates/`
+
+**四个工件模板**：
+1. **proposal.md**：变更提案（Why, What Changes, Capabilities, Impact）
+2. **design.md**：设计文档（Context, Goals/Non-Goals, Decisions, Risks）
+3. **tasks.md**：任务清单（按章节组织的复选框）
+4. **spec.md**：Delta Spec（ADDED/MODIFIED/REMOVED/RENAMED 章节）
+
+**模板示例**（proposal.md）：
+```markdown
+## Why
+<!-- Explain the motivation for this change. What problem does this solve? Why now? -->
+
+## What Changes
+<!-- Describe what will change. Be specific about new capabilities, modifications, or removals. -->
+
+## Capabilities
+### New Capabilities
+- `<name>`: <brief description of what this capability covers>
+
+### Modified Capabilities
+- `<existing-name>`: <what requirement is changing>
+
+## Impact
+<!-- Affected code, APIs, dependencies, systems -->
+```
+
+### 2.2 AI 指令生成
+
+**指令生成**（`src/commands/workflow/instructions.ts`）：
+
+指令结构：
+```xml
+<artifact id="proposal" change="<change-name>" schema="spec-driven">
+  <task>Create the proposal artifact for change "<change-name>".</task>
+
+  <project_context>
+    <!-- 背景信息，AI 不要包含在输出中 -->
+  </project_context>
+
+  <rules>
+    <!-- 约束条件，AI 必须遵循 -->
+  </rules>
+
+  <dependencies>
+    <!-- 需要读取的依赖文件 -->
+    <dependency id="design" status="done">
+      <path>./design.md</path>
+      <description>Design document</description>
+    </dependency>
+  </dependencies>
+
+  <output>
+    Write to: ./proposal.md
+  </output>
+
+  <instruction>
+    <!-- 具体指导 -->
+  </instruction>
+
+  <template>
+    <!-- 模板内容 -->
